@@ -346,6 +346,36 @@ describe("buildEmbeddedRunPayloads tool-error warnings", () => {
     });
   });
 
+  it("projects automatic internal source replies into suppression-safe final payloads", () => {
+    const payloads = buildPayloads({
+      assistantTexts: ["ordinary final should stay private"],
+      didSendViaMessagingTool: true,
+      messagingToolSourceReplyPayloads: [
+        {
+          text: "sent through automatic WebChat source reply",
+        },
+      ],
+      sourceReplyDeliveryMode: "automatic",
+      sessionKey: "agent:main",
+      agentId: "main",
+      runId: "run-1",
+    });
+
+    expect(payloads).toHaveLength(1);
+    expect(payloads[0]).toMatchObject({
+      text: "sent through automatic WebChat source reply",
+    });
+    expect(getReplyPayloadMetadata(payloads[0] as object)).toMatchObject({
+      deliverDespiteSourceReplySuppression: true,
+      sourceReplyTranscriptMirror: {
+        sessionKey: "agent:main",
+        agentId: "main",
+        text: "sent through automatic WebChat source reply",
+        idempotencyKey: "run-1:internal-source-reply:0",
+      },
+    });
+  });
+
   it("suppresses terminal assistant text after direct message-tool source replies", () => {
     const payloads = buildPayloads({
       assistantTexts: ["ordinary final should stay private"],

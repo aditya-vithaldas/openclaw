@@ -603,10 +603,14 @@ export function buildEmbeddedRunPayloads(params: {
     };
   }> = [];
 
-  const sourceReplyPayloads =
-    params.sourceReplyDeliveryMode === "message_tool_only"
-      ? (params.messagingToolSourceReplyPayloads ?? [])
-      : [];
+  const hasMessagingToolSourceReplyPayloads =
+    (params.messagingToolSourceReplyPayloads?.length ?? 0) > 0;
+  const shouldProjectMessagingToolSourceReplies =
+    params.sourceReplyDeliveryMode === "message_tool_only" ||
+    (params.sourceReplyDeliveryMode === "automatic" && hasMessagingToolSourceReplyPayloads);
+  const sourceReplyPayloads = shouldProjectMessagingToolSourceReplies
+    ? (params.messagingToolSourceReplyPayloads ?? [])
+    : [];
   const sourceReplyStartIndex = replyItems.length;
   sourceReplyPayloads.forEach((payload, index) => {
     const text = normalizeOptionalString(payload.text) ?? "";
@@ -622,7 +626,7 @@ export function buildEmbeddedRunPayloads(params: {
     ) {
       return;
     }
-    // Message-tool-only replies were already sent by the tool. Mirror them into
+    // Internal source replies were already sent by the tool. Mirror them into
     // the transcript while marking payloads so channel delivery suppresses a duplicate send.
     replyItems.push({
       text,
