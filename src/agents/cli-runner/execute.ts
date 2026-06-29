@@ -595,8 +595,10 @@ export async function executePreparedCliRun(
       const messagingToolSentTargetKeys = new Set<string>();
       const messagingToolSourceReplyPayloads: MessagingToolSourceReplyPayload[] = [];
       const isPreparedInternalSourceReply = async (call: McpLoopbackToolCallStart) => {
+        const sourceReplyDeliveryMode = context.params.sourceReplyDeliveryMode;
         if (
-          context.params.sourceReplyDeliveryMode !== "message_tool_only" ||
+          (sourceReplyDeliveryMode !== "message_tool_only" &&
+            sourceReplyDeliveryMode !== "automatic") ||
           normalizeCliMessagingToolName(call.toolName) !== "message" ||
           call.args.action !== "send" ||
           !context.params.config
@@ -773,16 +775,22 @@ export async function executePreparedCliRun(
               messagingToolSentMediaUrlKeys,
               content.mediaUrls ?? [],
             );
-            if (
-              isDeliveredMessageToolOnlySourceReplyResult({
+            const deliveredMessageToolOnlySourceReply = isDeliveredMessageToolOnlySourceReplyResult(
+              {
                 sourceReplyDeliveryMode: context.params.sourceReplyDeliveryMode,
                 toolName: paramsLocal.toolName,
                 args: paramsLocal.args,
                 result: paramsLocal.result,
                 isError: paramsLocal.isError,
-              })
-            ) {
+              },
+            );
+            if (deliveredMessageToolOnlySourceReply) {
               didDeliverSourceReplyViaMessageTool = true;
+            }
+            if (
+              deliveredMessageToolOnlySourceReply ||
+              context.params.sourceReplyDeliveryMode === "automatic"
+            ) {
               const sourceReplyPayload = extractMessagingToolSourceReplyPayload(paramsLocal.result);
               if (sourceReplyPayload) {
                 if (messagingToolSourceReplyPayloads.length >= CLI_MESSAGING_EVIDENCE_MAX_CALLS) {

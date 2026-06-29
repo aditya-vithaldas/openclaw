@@ -1172,6 +1172,52 @@ describe("executePreparedCliRun supervisor output capture", () => {
     ]);
   });
 
+  it("preserves automatic internal source-reply payload evidence", async () => {
+    const context = buildPreparedCliRunContext({ output: "text", provider: "google-gemini-cli" });
+    context.mcpDeliveryCapture = true;
+    context.params.sourceReplyDeliveryMode = "automatic";
+    context.params.messageProvider = "webchat";
+    supervisorSpawnMock.mockImplementationOnce(async (...args: unknown[]) => {
+      const input = args[0] as SupervisorSpawnInput;
+      recordMcpLoopbackToolCallResult({
+        captureKey: input.env?.OPENCLAW_MCP_CLI_CAPTURE_KEY ?? "",
+        toolName: "message",
+        args: {
+          action: "send",
+          message: "automatic source reply",
+        },
+        result: {
+          ok: true,
+          details: {
+            deliveryStatus: "sent",
+            sourceReplySink: "internal-ui",
+            sourceReply: {
+              text: "automatic source reply",
+            },
+          },
+        },
+        isError: false,
+      });
+      input.onStdout?.("done");
+      return createManagedRun({
+        reason: "exit",
+        exitCode: 0,
+        exitSignal: null,
+        durationMs: 50,
+        stdout: "",
+        stderr: "",
+        timedOut: false,
+        noOutputTimedOut: false,
+      });
+    });
+
+    const result = await executePreparedCliRun(context);
+
+    expect(result.didSendViaMessagingTool).toBe(true);
+    expect(result.didDeliverSourceReplyViaMessageTool).toBeUndefined();
+    expect(result.messagingToolSourceReplyPayloads).toEqual([{ text: "automatic source reply" }]);
+  });
+
   it("retains confirmed delivery for long non-streaming message calls", async () => {
     const context = buildPreparedCliRunContext({ output: "text", provider: "local-cli" });
     context.mcpDeliveryCapture = true;
