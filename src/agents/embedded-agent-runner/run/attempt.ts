@@ -2251,6 +2251,9 @@ export async function runEmbeddedAttempt(
         onUserMessagePersisted: (message) => {
           params.onUserMessagePersisted?.(message);
         },
+        onUserMessageBlocked: () => {
+          params.userTurnTranscriptRecorder?.markBlocked();
+        },
         onAssistantErrorMessagePersisted: (message) => {
           params.onAssistantErrorMessagePersisted?.(message);
         },
@@ -3753,6 +3756,9 @@ export async function runEmbeddedAttempt(
             toolCallId: toolParams.toolCallId,
             args: toolParams.input,
             replaySafe: replaySafeTools.has(toolParams.tool as never),
+            hideFromChannelProgress:
+              "hideFromChannelProgress" in toolParams.tool &&
+              toolParams.tool.hideFromChannelProgress === true,
             execute: async () =>
               await toolParams.tool.execute(
                 toolParams.toolCallId,
@@ -3800,6 +3806,7 @@ export async function runEmbeddedAttempt(
         cancel: (reason?: "user_abort" | "restart" | "superseded") => void;
       } = {
         kind: "embedded",
+        runId: params.runId,
         queueMessage: async (text: string, options) => {
           if (options?.steeringMode) {
             activeSession.agent.steeringMode = options.steeringMode;
